@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Hantu: Misteri Peredaran Darah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0f0c29;
+            background-image: linear-gradient(to bottom, #0f0c29, #1b1638, #110e20);
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            margin: 0;
+            user-select: none;
+        }
+
+        .font-creepster { font-family: 'Creepster', cursive; letter-spacing: 2px; }
+        .title-glow { text-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.6); }
+
+        .door-card {
+            background: linear-gradient(145deg, #1f1a2e, #14101e);
+            border-radius: 5rem 5rem 1rem 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1rem;
+        }
+        .door-card.active { border: 2px solid #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.5); }
+        .door-card.completed { border: 2px solid #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3); }
+        .door-card.locked { opacity: 0.6; cursor: not-allowed; border: 2px solid #333; }
+
+        #adventure-area {
+            background: linear-gradient(to bottom, #1a1625 0%, #2a2235 50%, #15101a 50%, #0a0810 100%);
+            border: 4px solid #4c1d95;
+            box-shadow: 0 0 40px rgba(76, 29, 149, 0.5) inset;
+            position: relative; width: 100%; height: 60vh; min-height: 400px; overflow: hidden; border-radius: 1rem;
+        }
+
+        .furniture {
+            position: absolute; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8)); transition: filter 0.3s;
+        }
+        .furniture .icon { font-size: 2.5rem; }
+        .furniture.highlight { filter: drop-shadow(0 0 15px rgba(234, 179, 8, 0.9)); }
+        .furniture-name { background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 6px; font-size: 0.65rem; margin-top: 5px; color: #ddd; text-align: center; }
+
+        #player { position: absolute; font-size: 2.5rem; transform: translate(-50%, -50%); z-index: 10; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.8)); }
+
+        .game-controls-overlay { position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; z-index: 20; }
+        .dpad-container { display: grid; grid-template-columns: 45px 45px 45px; grid-template-rows: 45px 45px 45px; gap: 5px; pointer-events: auto; opacity: 0.8; }
+        .dpad-btn { background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; cursor: pointer; backdrop-filter: blur(5px); }
+        .dpad-btn:active { background: rgba(255,255,255,0.4); transform: scale(0.95); }
+        .up { grid-column: 2; grid-row: 1; } .left { grid-column: 1; grid-row: 2; } .right { grid-column: 3; grid-row: 2; } .down { grid-column: 2; grid-row: 3; }
+
+        .action-btn { pointer-events: auto; width: 70px; height: 70px; border-radius: 50%; background: rgba(100, 100, 100, 0.5); border: 3px solid #555; color: #aaa; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: all 0.2s; }
+        .action-btn.active { background: rgba(234, 179, 8, 0.8); border-color: #fde047; color: white; box-shadow: 0 0 20px rgba(234, 179, 8, 0.6); cursor: pointer; transform: scale(1.1); }
+        .action-btn.active:active { transform: scale(1.0); background: rgba(202, 138, 4, 0.9); }
+
+        .modal-overlay { backdrop-filter: blur(8px); background-color: rgba(15, 12, 41, 0.9); }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 4px; }
+        
+        .toggle-checkbox:checked { right: 0; border-color: #68D391; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+    </style>
+</head>
+<body class="flex flex-col items-center w-full">
+
+    <audio id="sfx-click" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+    <audio id="sfx-door" src="https://www.soundjay.com/doors/sounds/door-creak-01.mp3"></audio>
+
+    <!-- Navbar Atas -->
+    <nav class="w-full bg-[#141124] border-b border-purple-900 py-3 px-4 md:px-8 flex justify-between items-center z-20 shadow-lg">
+        <div class="flex items-center gap-2 md:gap-3">
+            <span class="text-2xl md:text-3xl">👻</span>
+            <span class="font-creepster text-xl md:text-2xl text-purple-300 tracking-wider mt-1">PETUALANGAN DARAH</span>
+        </div>
+        <div class="flex items-center gap-2 md:gap-3">
+            <div id="timer-display" class="hidden bg-purple-950/80 text-yellow-300 px-3 py-1 rounded-full text-xs md:text-sm font-bold border border-purple-700">⏱️ <span id="timer-text">00:00</span></div>
+            <button onclick="playSound('click'); backToMenu()" class="bg-[#1f292e] hover:bg-[#374151] text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded shadow border border-gray-700 transition-colors">Beranda</button>
+            <button onclick="playSound('click'); showAdminLogin()" class="bg-[#9333ea] hover:bg-[#7e22ce] text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded shadow transition-colors">Panel Admin</button>
+        </div>
+    </nav>
+
+    <header class="w-full text-center mt-8 mb-10 z-10 relative flex flex-col items-center px-4" id="hero-section">
+        <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold text-[#e9d5ff] font-creepster mb-6 text-center max-w-5xl leading-tight title-glow">
+            RUMAH HANTU: MISTERI PEREDARAN<br>DARAH
+        </h1>
+        <div class="bg-black/30 border border-purple-800/80 rounded-xl p-4 md:p-5 max-w-3xl shadow-lg backdrop-blur-sm space-y-4">
+            <p class="text-gray-300 text-sm md:text-base leading-relaxed">
+                Beranikan dirimu menjelajahi ruangan gelap! Cari 2 Kunci Emas yang disembunyikan. Hati-hati, ada 6 jebakan menanti. Kamu punya 2 kesempatan salah!
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
+                <input type="text" id="player-name-input" placeholder="Masukkan Nama Lengkapmu..." class="bg-black/60 border border-purple-500 text-white px-4 py-2 rounded-lg text-sm text-center w-full sm:w-72 focus:outline-none">
+                <button onclick="startFullGame()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2 rounded-lg text-sm shadow transition-all">Mulai Petualangan 🚀</button>
+            </div>
+        </div>
+    </header>
+
+    <main id="view-main" class="w-full max-w-6xl mx-auto z-10 px-4 pb-16 hidden">
+        <div id="doors-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6"></div>
+    </main>
+
+    <!-- RUANG 1: MAKMAL PEREDARAN DARAH -->
+    <main id="view-room-1" class="w-full max-w-4xl mx-auto z-10 px-4 pb-16 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-creepster text-purple-400">Ruang 1: Makmal Peredaran Darah</h2>
+            <button onclick="playSound('click'); backToMenu()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-white text-sm font-semibold">Kembali</button>
+        </div>
+        <div class="bg-gray-900 p-6 rounded-xl border border-purple-800 shadow-2xl mb-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            <p class="text-gray-300 text-sm mb-4">Pelajari materi sistem peredaran darah berikut secara berurutan dari dasar hingga kompleks:</p>
+            
+            <div class="space-y-3">
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 1 (Dasar)</span>
+                        <h4 class="text-white font-bold text-base mt-1">Organ Peredaran Darah Manusia</h4>
+                    </div>
+                    <a href="https://youtu.be/bdl0zkukw7I?si=tFnnGqeIl5ZkFQwl" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 2</span>
+                        <h4 class="text-white font-bold text-base mt-1">Komponen Darah</h4>
+                    </div>
+                    <a href="https://youtu.be/_l_urdgN9dc?si=sSlGt_52bCTe3sRr" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 3 (Menengah)</span>
+                        <h4 class="text-white font-bold text-base mt-1">Cara Kerja Jantung</h4>
+                    </div>
+                    <a href="https://youtu.be/44tsohtD45E?si=zFrN_w_x53lPW38u" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 4</span>
+                        <h4 class="text-white font-bold text-base mt-1">Mekanisme Peredaran Darah dan Komponennya dalam Tubuh Manusia</h4>
+                    </div>
+                    <a href="https://youtu.be/ilN1y_KZYlM?si=j8yh4sJJHh-wnPkx" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 5 (Lanjutan)</span>
+                        <h4 class="text-white font-bold text-base mt-1">Proses Pembekuan Darah / Hemostasis</h4>
+                    </div>
+                    <a href="https://youtu.be/R10OPIZy5lQ?si=-ONQLBO2LQgT0RWq" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 6 (Kompleks)</span>
+                        <h4 class="text-white font-bold text-base mt-1">Gangguan Organ Peredaran Darah</h4>
+                    </div>
+                    <a href="https://youtu.be/Tv7HGdXEjQU?si=zna8DZhotObWa-TD" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+
+                <div class="bg-black/50 border border-purple-900/60 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-left">
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded font-bold">Materi 7 (Penerapan)</span>
+                        <h4 class="text-white font-bold text-base mt-1">Gaya Hidup Sehat untuk Menjaga Kesehatan Jantung</h4>
+                    </div>
+                    <a href="https://youtu.be/JsZ_kSaJLBg?si=j0GB_yK3x3TNkW-x" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow shrink-0">▶ Tonton di YouTube</a>
+                </div>
+            </div>
+        </div>
+        <div class="text-center">
+            <button onclick="playSound('click'); completeRoom1()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-transform hover:scale-105 text-lg">
+                ✅ Selesai Menonton & Lanjut
+            </button>
+        </div>
+    </main>
+
+    <main id="view-adventure" class="w-full max-w-5xl mx-auto px-2 md:px-4 pb-12 hidden flex flex-col items-center">
+        <div class="w-full flex justify-between items-center mb-4">
+            <h2 id="adv-room-title" class="text-xl md:text-3xl font-creepster text-purple-400">Ruang X</h2>
+            <div class="flex items-center gap-3 md:gap-5">
+                <div class="text-sm md:text-lg font-bold text-red-400" id="adv-lives-count">Kesalahan: ❤️❤️</div>
+                <div class="text-sm md:text-lg font-bold text-yellow-400">Kunci: <span id="adv-key-count">0</span>/2</div>
+            </div>
+        </div>
+
+        <div id="adventure-area">
+            <div class="absolute top-2 left-2 flex items-center gap-2 bg-black bg-opacity-70 p-2 md:p-3 rounded-lg z-10 pointer-events-none border border-purple-900 max-w-[200px] md:max-w-xs">
+                <span class="text-2xl md:text-3xl animate-bounce">👻</span>
+                <p class="text-gray-200 text-[10px] md:text-xs font-semibold leading-tight">
+                    "Ada 8 objek di sini! 2 Kunci Asli dan 6 Jebakan. Awas nyawamu!"
+                </p>
+            </div>
+
+            <div id="room-furnitures"></div>
+            <div id="player">🧍</div>
+
+            <div class="game-controls-overlay">
+                <div class="dpad-container" id="dpad">
+                    <div class="dpad-btn up" onmousedown="startMove(0, -1)" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(0, -1)" ontouchend="stopMove()">▲</div>
+                    <div class="dpad-btn left" onmousedown="startMove(-1, 0)" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(-1, 0)" ontouchend="stopMove()">◀</div>
+                    <div class="dpad-btn right" onmousedown="startMove(1, 0)" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(1, 0)" ontouchend="stopMove()">▶</div>
+                    <div class="dpad-btn down" onmousedown="startMove(0, 1)" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove(0, 1)" ontouchend="stopMove()">▼</div>
+                </div>
+                <div id="btn-action" class="action-btn" onclick="performAction()">Periksa</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL SOAL / KUNCI -->
+    <div id="modal-key" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay px-4">
+        <div class="bg-gray-900 border-2 border-yellow-500 rounded-2xl p-6 w-full max-w-lg text-center relative shadow-[0_0_30px_rgba(234,179,8,0.4)]">
+            <div class="text-5xl mb-2 animate-pulse">🗝️</div>
+            <h3 class="text-2xl md:text-3xl font-creepster text-yellow-400 mb-1">SOAL / KUNCI DITEMUKAN!</h3>
+            <p class="text-gray-300 mb-4 text-xs md:text-sm">Perhatikan soal di bawah. Jika benar, ambil kuncinya!</p>
+            
+            <div class="bg-black/60 p-4 rounded-xl border border-gray-700 mb-6 flex flex-col items-center">
+                <img id="key-qr-img" src="" alt="Soal" class="mx-auto max-w-[250px] max-h-[250px] object-contain bg-white p-2 rounded mb-4 shadow">
+            </div>
+            <button onclick="playSound('click'); claimKey()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.4)] transition text-lg">
+                ✅ Selesai Menjawab & Ambil
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Game Over -->
+    <div id="modal-gameover" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay px-4">
+        <div class="bg-red-950 border-2 border-red-600 rounded-2xl p-8 w-full max-w-sm text-center relative shadow-[0_0_40px_rgba(220,38,38,0.5)]">
+            <div class="text-6xl mb-4">💀</div>
+            <h3 class="text-4xl font-creepster text-red-500 mb-2 title-glow">GAME OVER</h3>
+            <p class="text-gray-300 mb-6 text-sm">Nyawamu habis karena salah memilih jebakan!</p>
+            <button onclick="playSound('click'); retryRoom()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg w-full shadow">
+                Ulangi Ruangan Ini
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Tamat / Victory -->
+    <div id="modal-victory" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay px-4">
+        <div class="bg-gray-900 border-2 border-yellow-500 rounded-2xl p-8 w-full max-w-lg text-center relative shadow-[0_0_50px_rgba(234,179,8,0.5)] space-y-3">
+            <div class="text-6xl mb-2 animate-bounce">🏆</div>
+            <h3 class="text-3xl md:text-4xl font-creepster text-yellow-400 mb-1 title-glow">SELAMAT! KELUAR!</h3>
+            <p class="text-gray-300 text-sm">Kamu berhasil menaklukkan seluruh rumah hantu!</p>
+            
+            <div class="bg-black/60 border border-yellow-500/50 p-4 rounded-xl my-4 space-y-2 text-left">
+                <p class="text-xs text-gray-400 uppercase tracking-wider font-bold text-center">Sertifikat Kelulusan Misi</p>
+                <div class="flex justify-between text-sm"><span class="text-gray-400">Nama Pemain:</span> <strong id="vic-name" class="text-white"></strong></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-400">Waktu Pengerjaan:</span> <strong id="vic-time" class="text-yellow-400"></strong></div>
+            </div>
+
+            <p class="text-xs text-green-400 font-semibold">📸 Silakan Screenshot layar ini sebagai bukti ke guru!</p>
+            <button onclick="playSound('click'); location.reload()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl w-full shadow text-base transition">
+                Main Lagi / Beranda
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="modal-admin-login" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay px-4">
+        <div class="bg-gray-900 border border-purple-600 rounded-xl p-6 w-full max-w-sm text-center shadow-2xl relative">
+            <div class="absolute top-3 right-3 text-gray-400 hover:text-white cursor-pointer text-lg" onclick="hideAdminLogin()">&times;</div>
+            <h3 class="text-2xl font-bold text-white mb-2">🔐 Akses Admin</h3>
+            <input type="password" id="admin-pw-input" class="w-full bg-black/50 text-white border border-gray-600 rounded p-2 mb-4 focus:outline-none text-center tracking-widest" placeholder="Password...">
+            <button onclick="verifyAdmin()" class="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded font-bold text-sm">Masuk</button>
+        </div>
+    </div>
+
+    <!-- Modal Panel Admin -->
+    <div id="modal-admin-panel" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay py-4 px-2">
+        <div class="bg-gray-900 border-2 border-purple-600 rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800 rounded-t-xl">
+                <h3 class="text-xl font-bold text-purple-400 flex items-center gap-2">⚙️ Panel Pengaturan Admin (Link Gambar)</h3>
+                <button onclick="closeAdminPanel()" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto custom-scrollbar flex-grow space-y-4">
+                <div class="bg-indigo-900/40 border border-indigo-700 p-4 rounded-lg flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-indigo-300 text-sm">👁️ Fitur Mata-Mata (Khusus Admin)</h4>
+                        <p class="text-xs text-indigo-200 mt-1">Tampilkan label "ASLI" atau "ZONK" di atas perabotan ruangan untuk memudahkan testing.</p>
+                    </div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="admin-vision-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="admin-vision-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-400 cursor-pointer"></label>
+                    </div>
+                </div>
+
+                <div id="admin-rooms-list" class="space-y-6"></div>
+            </div>
+
+            <div class="p-4 border-t border-gray-700 bg-gray-800 rounded-b-xl flex justify-between items-center">
+                <div></div>
+                <div class="flex gap-2">
+                    <button onclick="closeAdminPanel()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-semibold">Batal</button>
+                    <button onclick="saveAdminPanel()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-bold text-sm shadow">Simpan Perubahan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT UTAMA -->
+    <script>
+        const sharedZonks = {
+            f1_qr: "https://i.ibb.co.com/mrXKsDcd/ZONK-1.png",
+            f2_qr: "https://i.ibb.co.com/27X6MxgY/ZONK-2.png",
+            f3_qr: "https://i.ibb.co.com/Kp509hT0/ZONK-3.png",
+            f4_qr: "https://i.ibb.co.com/VcQ0YbX9/ZONK-4.png",
+            f5_qr: "https://i.ibb.co.com/BKKN2fwN/ZONK-5.png",
+            f6_qr: "https://i.ibb.co.com/5gDRgRNK/ZONK-6.png"
+        };
+
+        let gameConfig = {
+            adminVision: false,
+            room1: { title: "Ruang 1: Makmal Peredaran Darah" },
+            rooms: [
+                { id: 2, name: "Ruang 2: Koridor Injap Jantung", k1_qr: "https://i.ibb.co.com/R4YvgkFx/RUANG-2-KUIS-A-2.png", k2_qr: "https://i.ibb.co.com/WWb5QQ1C/RUANG-2-KUIS-B-2.png", ...sharedZonks },
+                { id: 3, name: "Ruang 3: Kamar Tidur Eritrosit", k1_qr: "https://ibb.co.com/36J6dqX", k2_qr: "https://ibb.co.com/G4HD4K0W", ...sharedZonks },
+                { id: 4, name: "Ruang 4: Gudang Pembuluh Vena", k1_qr: "https://ibb.co.com/JRcXym6L", k2_qr: "https://ibb.co.com/996snWcx", ...sharedZonks },
+                { id: 5, name: "Ruang 5: Perpustakaan Kuno Arteri", k1_qr: "https://ibb.co.com/nMXyssfp", k2_qr: "https://ibb.co.com/JwDKvBdy", ...sharedZonks },
+                { id: 6, name: "Ruang 6: Ruang Plasma Terbengkalai", k1_qr: "https://ibb.co.com/q3YjTb6r", k2_qr: "https://ibb.co.com/pvkHwTBx", ...sharedZonks },
+                { id: 7, name: "Ruang 7: Loteng Trombosit", k1_qr: "https://ibb.co.com/mVkJVyQT", k2_qr: "https://ibb.co.com/VpbbfkLN", ...sharedZonks },
+                { id: 8, name: "Ruang 8: Bilik Hemoglobin", k1_qr: "https://ibb.co.com/nqqbyxGj", k2_qr: "https://ibb.co.com/5ghMWSrS", ...sharedZonks }
+            ]
+        };
+
+        let playerName = "";
+        let gameState = { currentLevel: 1, keysFound: 0, lives: 2 };
+        let activeRoomId = 0;
+        
+        let playerPos = { x: 50, y: 50 };
+        let moveInterval = null;
+        let nearbyObject = null; 
+        let checkedObjects = []; 
+        let currentExaminedLoot = null; 
+
+        let startTime = 0;
+        let timerInterval = null;
+        let finalTimeString = "";
+
+        const roomLayout = [
+            { id: 'f1', name: 'Lukisan', icon: '🖼️', x: 20, y: 25 },
+            { id: 'f2', name: 'Rak Buku', icon: '📚', x: 50, y: 25 },
+            { id: 'f3', name: 'Lemari', icon: '🚪', x: 80, y: 25 },
+            { id: 'f4', name: 'Meja Laci', icon: '🪑', x: 20, y: 55 },
+            { id: 'f5', name: 'Jam Kuno', icon: '🕰️', x: 80, y: 55 },
+            { id: 'f6', name: 'Tengkorak', icon: '💀', x: 20, y: 85 },
+            { id: 'f7', name: 'Peti Mati', icon: '⚰️', x: 50, y: 85 },
+            { id: 'f8', name: 'Jendela', icon: '🪟', x: 80, y: 85 }
+        ];
+
+        function playSound(type) {
+            try { if(type==='click') document.getElementById('sfx-click').play(); else if(type==='door') document.getElementById('sfx-door').play(); } catch(e){}
+        }
+
+        function startFullGame() {
+            const inputName = document.getElementById('player-name-input').value.trim();
+            if(!inputName) {
+                alert("Mohon masukkan nama lengkapmu terlebih dahulu sebelum mulai!");
+                return;
+            }
+            playerName = inputName;
+            playSound('click');
+            
+            // Mulai Timer
+            startTime = Date.now();
+            document.getElementById('timer-display').classList.remove('hidden');
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+
+            document.getElementById('hero-section').style.display = 'none';
+            document.getElementById('view-main').classList.remove('hidden');
+            renderMainMenu();
+        }
+
+        function updateTimer() {
+            const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+            document.getElementById('timer-text').innerText = `${mins}:${secs}`;
+        }
+
+        function renderMainMenu() {
+            const container = document.getElementById('doors-container');
+            if(!container) return;
+            container.innerHTML = '';
+            createDoorCard(container, 1, gameConfig.room1.title, gameState.currentLevel > 1, gameState.currentLevel === 1, "📖");
+            gameConfig.rooms.forEach(room => {
+                createDoorCard(container, room.id, room.name, gameState.currentLevel > room.id, gameState.currentLevel === room.id, "🚪");
+            });
+        }
+
+        function createDoorCard(container, id, name, isCompleted, isActive, defaultIcon) {
+            const div = document.createElement('div');
+            let status = "Terkunci", bg = "bg-gray-800 text-gray-500", state = "locked";
+            if (isCompleted) { status = "Selesai ✓"; bg = "bg-green-950 text-green-300 border-green-700"; state = "completed cursor-pointer"; } 
+            else if (isActive) { status = id === 1 ? "Masuk Materi" : "Kunci: 0/2"; bg = "bg-yellow-950 text-yellow-300 border-yellow-700"; state = "active cursor-pointer"; }
+            
+            div.className = `door-card border-4 border-gray-800 h-64 ${state}`;
+            div.innerHTML = `<span class="text-3xl font-creepster text-purple-400 mb-1">0${id}</span>
+                             <div class="text-5xl my-2">${defaultIcon}</div>
+                             <h3 class="text-lg font-creepster text-white text-center mt-2 mb-2 flex-grow">${name}</h3>
+                             <div class="mt-auto px-4 py-1 rounded-full ${bg} text-xs font-semibold shadow-inner">${status}</div>`;
+            if (isCompleted || isActive) div.onclick = () => { playSound('door'); enterRoom(id); };
+            container.appendChild(div);
+        }
+
+        function switchView(viewId) {
+            ['view-main', 'view-room-1', 'view-adventure'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        function backToMenu() { stopMove(); renderMainMenu(); switchView('view-main'); }
+
+        function enterRoom(id) {
+            activeRoomId = id;
+            if (id === 1) {
+                switchView('view-room-1');
+            } else {
+                initAdventureRoom(id);
+                switchView('view-adventure');
+            }
+        }
+        function completeRoom1() { if(gameState.currentLevel === 1) gameState.currentLevel = 2; backToMenu(); }
+
+        // ADVENTURE LOGIC
+        function initAdventureRoom(id) {
+            const roomObj = gameConfig.rooms.find(r => r.id === id);
+            document.getElementById('adv-room-title').innerText = roomObj ? roomObj.name : `Ruang ${id}`;
+            gameState.keysFound = 0;
+            gameState.lives = 2; 
+            checkedObjects = [];
+            updateAdventureUI();
+
+            playerPos = { x: 50, y: 50 };
+            updatePlayerDOM();
+
+            let lootSetup = ['real1', 'real2', 'fake1', 'fake2', 'fake3', 'fake4', 'fake5', 'fake6'];
+            lootSetup.sort(() => Math.random() - 0.5);
+
+            const container = document.getElementById('room-furnitures');
+            container.innerHTML = '';
+            roomLayout.forEach((fur, idx) => {
+                fur.loot = lootSetup[idx]; 
+                
+                let adminHint = '';
+                if(gameConfig.adminVision) {
+                    const isReal = fur.loot.startsWith('real');
+                    const hintColor = isReal ? 'bg-green-600' : 'bg-red-600';
+                    const hintText = isReal ? '✅ ASLI' : '❌ ZONK';
+                    adminHint = `<div class="absolute -top-3 left-1/2 transform -translate-x-1/2 ${hintColor} text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow z-30 pointer-events-none w-max">${hintText}</div>`;
+                }
+
+                const el = document.createElement('div');
+                el.className = 'furniture'; el.id = fur.id; el.style.left = fur.x + '%'; el.style.top = fur.y + '%';
+                el.innerHTML = `${adminHint}<div class="icon">${fur.icon}</div><div class="furniture-name">${fur.name}</div>`;
+                container.appendChild(el);
+            });
+            checkProximity();
+        }
+
+        function updateAdventureUI() {
+            document.getElementById('adv-key-count').innerText = gameState.keysFound;
+            document.getElementById('adv-lives-count').innerHTML = `Kesalahan: ${'❤️'.repeat(gameState.lives)}${'🖤'.repeat(2 - gameState.lives)}`;
+        }
+
+        function startMove(dx, dy) {
+            if(moveInterval) clearInterval(moveInterval);
+            moveInterval = setInterval(() => {
+                playerPos.x += dx * 1.5; playerPos.y += dy * 1.5;
+                if(playerPos.x < 5) playerPos.x = 5; if(playerPos.x > 95) playerPos.x = 95;
+                if(playerPos.y < 15) playerPos.y = 15; if(playerPos.y > 90) playerPos.y = 90;
+                updatePlayerDOM(); checkProximity();
+            }, 30);
+        }
+        function stopMove() { if(moveInterval) clearInterval(moveInterval); moveInterval = null; updatePlayerDOM(); }
+
+        function updatePlayerDOM() {
+            const p = document.getElementById('player');
+            p.style.left = playerPos.x + '%'; p.style.top = playerPos.y + '%';
+            p.style.transform = `translate(-50%, -50%) rotate(${moveInterval ? Math.sin(Date.now()/100)*10 : 0}deg)`;
+        }
+
+        function checkProximity() {
+            nearbyObject = null;
+            document.querySelectorAll('.furniture').forEach(el => el.classList.remove('highlight'));
+            for(let fur of roomLayout) {
+                if(Math.sqrt(Math.pow(playerPos.x - fur.x, 2) + Math.pow(playerPos.y - fur.y, 2)) < 12) {
+                    nearbyObject = fur; document.getElementById(fur.id).classList.add('highlight'); break;
+                }
+            }
+            const btn = document.getElementById('btn-action');
+            if(nearbyObject) {
+                btn.classList.add('active'); btn.innerText = checkedObjects.includes(nearbyObject.id) ? "Kosong" : "Periksa";
+            } else { btn.classList.remove('active'); btn.innerText = "Periksa"; }
+        }
+
+        function performAction() {
+            if(!nearbyObject || checkedObjects.includes(nearbyObject.id)) return;
+            playSound('click');
+            checkedObjects.push(nearbyObject.id);
+            checkProximity();
+
+            currentExaminedLoot = nearbyObject.loot;
+            const roomData = gameConfig.rooms.find(r => r.id === activeRoomId);
+            
+            let imgUrl = '';
+            if(currentExaminedLoot === 'real1') imgUrl = roomData.k1_qr;
+            else if(currentExaminedLoot === 'real2') imgUrl = roomData.k2_qr;
+            else {
+                const num = currentExaminedLoot.replace('fake', '');
+                imgUrl = roomData[`f${num}_qr`];
+            }
+
+            document.getElementById('key-qr-img').src = imgUrl;
+            document.getElementById('modal-key').classList.remove('hidden');
+        }
+
+        function claimKey() {
+            document.getElementById('modal-key').classList.add('hidden');
+            
+            if (currentExaminedLoot.startsWith('fake')) {
+                gameState.lives--;
+                updateAdventureUI();
+                if (gameState.lives <= 0) {
+                    setTimeout(() => document.getElementById('modal-gameover').classList.remove('hidden'), 300);
+                }
+            } else {
+                gameState.keysFound++;
+                updateAdventureUI();
+                if (gameState.keysFound >= 2) {
+                    setTimeout(() => {
+                        if(gameState.currentLevel === activeRoomId) gameState.currentLevel++;
+                        if(activeRoomId === 8) {
+                            clearInterval(timerInterval);
+                            finalTimeString = document.getElementById('timer-text').innerText;
+                            document.getElementById('vic-name').innerText = playerName;
+                            document.getElementById('vic-time').innerText = finalTimeString;
+                            document.getElementById('modal-victory').classList.remove('hidden');
+                        } else {
+                            backToMenu();
+                        }
+                    }, 500);
+                }
+            }
+        }
+
+        function retryRoom() { document.getElementById('modal-gameover').classList.add('hidden'); initAdventureRoom(activeRoomId); }
+
+        // ADMIN PANEL
+        function showAdminLogin() { document.getElementById('modal-admin-login').classList.remove('hidden'); document.getElementById('admin-pw-input').value=''; }
+        function hideAdminLogin() { document.getElementById('modal-admin-login').classList.add('hidden'); }
+        function verifyAdmin() {
+            if(document.getElementById('admin-pw-input').value === 'KELOMPOK2JOSJIS') {
+                hideAdminLogin(); buildAdminForm(); document.getElementById('modal-admin-panel').classList.remove('hidden');
+            } else alert("Password Salah!");
+        }
+        function closeAdminPanel() { document.getElementById('modal-admin-panel').classList.add('hidden'); }
+
+        function buildAdminForm() {
+            document.getElementById('admin-vision-toggle').checked = gameConfig.adminVision;
+            const roomsList = document.getElementById('admin-rooms-list'); 
+            roomsList.innerHTML = '';
+            
+            gameConfig.rooms.forEach(r => {
+                roomsList.innerHTML += `
+                <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-3">
+                    <h4 class="font-bold text-purple-400 pb-1 border-b border-gray-600">Ruang ${r.id}: ${r.name}</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs text-green-400 font-bold">Link Kuis Asli 1:</label>
+                            <input type="text" id="adm-r${r.id}-k1" value="${r.k1_qr}" class="w-full bg-black text-white px-2 py-1.5 rounded text-xs border border-gray-600 mt-1">
+                        </div>
+                        <div>
+                            <label class="text-xs text-green-400 font-bold">Link Kuis Asli 2:</label>
+                            <input type="text" id="adm-r${r.id}-k2" value="${r.k2_qr}" class="w-full bg-black text-white px-2 py-1.5 rounded text-xs border border-gray-600 mt-1">
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function saveAdminPanel() {
+            gameConfig.adminVision = document.getElementById('admin-vision-toggle').checked;
+            gameConfig.rooms.forEach(r => {
+                r.k1_qr = document.getElementById(`adm-r${r.id}-k1`).value.trim();
+                r.k2_qr = document.getElementById(`adm-r${r.id}-k2`).value.trim();
+            });
+            closeAdminPanel();
+            if(!document.getElementById('view-adventure').classList.contains('hidden')) {
+                initAdventureRoom(activeRoomId);
+            }
+            alert("Perubahan berhasil disimpan!");
+        }
+    </script>
+</body>
+</html>
